@@ -1,4 +1,4 @@
-const assetVersion = "20260711-1705";
+const assetVersion = "20260711-1722";
 
 const puzzleImages = [
   {
@@ -31,6 +31,7 @@ const answerSection = document.getElementById("answerSection");
 const answerPlaceholder = document.getElementById("answerPlaceholder");
 const answerForm = document.getElementById("answerForm");
 const codeGrid = document.getElementById("codeGrid");
+const codeInput = document.getElementById("codeInput");
 const clearModal = document.getElementById("clearModal");
 const clearModalClose = document.getElementById("clearModalClose");
 const clearImage = document.getElementById("clearImage");
@@ -48,27 +49,25 @@ puzzleImages.forEach((item, index) => {
   puzzleGrid.append(card);
 });
 
-const codeInputs = Array.from({ length: correctCode.length }, (_, index) => {
-  const input = document.createElement("input");
-  input.className = "code-input";
-  input.type = "text";
-  input.inputMode = "text";
-  input.autocomplete = "off";
-  input.autocapitalize = "characters";
-  input.spellcheck = false;
-  input.maxLength = 1;
-  input.pattern = "[A-Za-z0-9]";
-  input.setAttribute("aria-label", `${index + 1}文字目`);
+const codeCells = Array.from({ length: correctCode.length }, (_, index) => {
+  const cell = document.createElement("button");
+  cell.className = "code-cell";
+  cell.type = "button";
+  cell.setAttribute("aria-label", `${index + 1}文字目`);
+  cell.addEventListener("click", () => focusCodeInput(index));
 
-  input.addEventListener("beforeinput", handleCodeBeforeInput);
-  input.addEventListener("input", (event) => handleCodeInput(event, index));
-  input.addEventListener("compositionend", (event) => handleCodeInput(event, index));
-  input.addEventListener("keydown", (event) => handleCodeKeydown(event, index));
-  input.addEventListener("paste", (event) => handleCodePaste(event, index));
-
-  codeGrid.append(input);
-  return input;
+  codeGrid.append(cell);
+  return cell;
 });
+
+codeInput.addEventListener("beforeinput", handleCodeBeforeInput);
+codeInput.addEventListener("input", handleCodeInput);
+codeInput.addEventListener("compositionend", handleCodeInput);
+codeInput.addEventListener("keydown", handleCodeKeydown);
+codeInput.addEventListener("focus", renderCodeCells);
+codeInput.addEventListener("blur", renderCodeCells);
+codeInput.addEventListener("selectionchange", renderCodeCells);
+codeInput.addEventListener("click", renderCodeCells);
 
 answerForm.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -82,7 +81,7 @@ updateAnswerPosition();
 
 window.addEventListener("scroll", updateAnswerPosition, { passive: true });
 window.addEventListener("resize", () => {
-  if (document.activeElement && document.activeElement.classList.contains("code-input")) {
+  if (document.activeElement === codeInput) {
     return;
   }
 
@@ -141,59 +140,33 @@ function handleCodeBeforeInput(event) {
   }
 }
 
-function handleCodeInput(event, index) {
+function handleCodeInput(event) {
   if (event.isComposing) {
     return;
   }
 
-  const normalized = normalizeCode(event.target.value);
-  event.target.value = normalized.slice(0, 1);
-  event.target.classList.remove("is-correct", "is-wrong");
-
-  if (normalized.length > 1) {
-    fillCode(normalized, index);
-    return;
-  }
-
-  if (normalized && index < codeInputs.length - 1) {
-    codeInputs[index + 1].focus();
-  }
+  const cursor = codeInput.selectionStart || 0;
+  const normalized = normalizeCode(codeInput.value).slice(0, correctCode.length);
+  codeInput.value = normalized;
+  codeInput.setSelectionRange(Math.min(cursor, normalized.length), Math.min(cursor, normalized.length));
+  renderCodeCells();
 }
 
-function handleCodeKeydown(event, index) {
-  if (event.key === "Backspace" && !event.target.value && index > 0) {
-    codeInputs[index - 1].focus();
+function handleCodeKeydown(event) {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    judgeAnswer();
   }
-}
-
-function handleCodePaste(event, index) {
-  event.preventDefault();
-  const pasted = normalizeCode(event.clipboardData.getData("text"));
-  fillCode(pasted, index);
-}
-
-function fillCode(value, startIndex) {
-  value
-    .slice(0, codeInputs.length - startIndex)
-    .split("")
-    .forEach((character, offset) => {
-      const input = codeInputs[startIndex + offset];
-      input.value = character;
-      input.classList.remove("is-correct", "is-wrong");
-    });
-
-  const nextIndex = Math.min(startIndex + value.length, codeInputs.length - 1);
-  codeInputs[nextIndex].focus();
 }
 
 function judgeAnswer() {
-  const answer = codeInputs.map((input) => normalizeCode(input.value)).join("");
+  const answer = normalizeCode(codeInput.value).slice(0, correctCode.length);
   const isPerfect = answer === correctCode;
 
-  codeInputs.forEach((input, index) => {
-    const isCorrect = normalizeCode(input.value) === correctCode[index];
-    input.classList.toggle("is-correct", isCorrect);
-    input.classList.toggle("is-wrong", !isCorrect);
+  codeCells.forEach((cell, index) => {
+    const isCorrect = answer[index] === correctCode[index];
+    cell.classList.toggle("is-correct", isCorrect);
+    cell.classList.toggle("is-wrong", !isCorrect);
   });
 
   if (isPerfect) {
@@ -233,6 +206,27 @@ document.addEventListener("keydown", (event) => {
 
 function closeClearModal() {
   clearModal.hidden = true;
+}
+
+function focusCodeInput(index) {
+  codeInput.focus();
+  codeInput.setSelectionRange(index, index);
+  renderCodeCells();
+}
+
+function renderCodeCells() {
+  const answer = normalizeCode(codeInput.value).slice(0, correctCode.length);
+  const activeIndex = Math.min(codeInput.selectionStart || answer.length, correctCode.length - 1);
+
+  if (codeInput.value !== answer) {
+    codeInput.value = answer;
+  }
+
+  codeCells.forEach((cell, index) => {
+    cell.textContent = answer[index] || "";
+    cell.classList.remove("is-correct", "is-wrong");
+    cell.classList.toggle("is-active", document.activeElement === codeInput && index === activeIndex);
+  });
 }
 
 function normalizeCode(value) {
