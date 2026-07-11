@@ -76,22 +76,19 @@ select {
 
 .puzzle-grid {
   display: grid;
-  gap: 14px;
+  gap: 18px;
 }
 
 .puzzle-card {
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-  background: #0d0d11;
+  overflow: visible;
 }
 
 .puzzle-card__image {
   width: 100%;
   display: block;
   height: auto;
+  border: 4px solid var(--pink);
   object-fit: contain;
-  background: #15151b;
 }
 
 .puzzle-card__placeholder {
@@ -166,7 +163,7 @@ select {
   background: #0f0f14;
   color: var(--text);
   text-align: center;
-  font-size: clamp(0.74rem, 3.1vw, 1rem);
+  font-size: 16px;
   font-weight: 800;
   text-transform: uppercase;
   outline: none;

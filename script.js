@@ -35,19 +35,7 @@ puzzleImages.forEach((item, index) => {
     ? createImage(item.src, item.caption)
     : createPlaceholder(index + 1);
 
-  const caption = document.createElement("div");
-  caption.className = "puzzle-card__caption";
-
-  const number = document.createElement("span");
-  number.className = "puzzle-card__number";
-  number.textContent = index + 1;
-
-  const captionText = document.createElement("span");
-  captionText.textContent = item.caption;
-
-  caption.append(number, captionText);
-
-  card.append(media, caption);
+  card.append(media);
   puzzleGrid.append(card);
 });
 
