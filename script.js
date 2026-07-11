@@ -1,4 +1,4 @@
-const assetVersion = "20260711-1730";
+const assetVersion = "20260711-1748";
 
 const puzzleImages = [
   {
@@ -30,6 +30,7 @@ const puzzleGrid = document.getElementById("puzzleGrid");
 const answerSection = document.getElementById("answerSection");
 const answerPlaceholder = document.getElementById("answerPlaceholder");
 const answerForm = document.getElementById("answerForm");
+const codeEntry = document.querySelector(".code-entry");
 const codeGrid = document.getElementById("codeGrid");
 const codeInput = document.getElementById("codeInput");
 const clearModal = document.getElementById("clearModal");
@@ -58,13 +59,20 @@ const codeCells = Array.from({ length: correctCode.length }, (_, index) => {
   return cell;
 });
 
+const codeSlots = Array.from({ length: correctCode.length }, () => "");
+const codeStatuses = Array.from({ length: correctCode.length }, () => "");
+let activeCodeIndex = 0;
+let hasJudged = false;
+
+codeInput.addEventListener("pointerdown", handleCodePointerDown);
 codeInput.addEventListener("beforeinput", handleCodeBeforeInput);
 codeInput.addEventListener("input", handleCodeInput);
 codeInput.addEventListener("compositionend", handleCodeInput);
 codeInput.addEventListener("keydown", handleCodeKeydown);
+codeInput.addEventListener("paste", handleCodePaste);
 codeInput.addEventListener("focus", renderCodeCells);
 codeInput.addEventListener("blur", renderCodeCells);
-codeInput.addEventListener("click", renderCodeCells);
+codeEntry.addEventListener("click", () => codeInput.focus());
 
 answerForm.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -127,14 +135,37 @@ function createPlaceholder(number) {
   return placeholder;
 }
 
+function handleCodePointerDown(event) {
+  event.preventDefault();
+  activeCodeIndex = getCodeIndexFromPoint(event.clientX, event.clientY);
+  codeInput.focus();
+  renderCodeCells();
+}
+
 function handleCodeBeforeInput(event) {
-  if (!event.data || event.inputType === "insertFromPaste" || event.isComposing) {
+  if (event.isComposing) {
     return;
   }
 
-  if (!normalizeCode(event.data)) {
+  if (event.inputType && event.inputType.startsWith("delete")) {
     event.preventDefault();
+    deleteSelectedCode(event.inputType);
+    return;
   }
+
+  if (!event.data || event.inputType === "insertFromPaste") {
+    return;
+  }
+
+  const value = normalizeCode(event.data);
+
+  if (!value) {
+    event.preventDefault();
+    return;
+  }
+
+  event.preventDefault();
+  insertCodeCharacters(value);
 }
 
 function handleCodeInput(event) {
@@ -142,10 +173,13 @@ function handleCodeInput(event) {
     return;
   }
 
-  const cursor = codeInput.selectionStart || 0;
-  const normalized = normalizeCode(codeInput.value).slice(0, correctCode.length);
-  codeInput.value = normalized;
-  codeInput.setSelectionRange(Math.min(cursor, normalized.length), Math.min(cursor, normalized.length));
+  const value = normalizeCode(codeInput.value);
+
+  if (value) {
+    insertCodeCharacters(value);
+  }
+
+  codeInput.value = "";
   renderCodeCells();
 }
 
@@ -153,18 +187,42 @@ function handleCodeKeydown(event) {
   if (event.key === "Enter") {
     event.preventDefault();
     judgeAnswer();
+    return;
+  }
+
+  if (event.key === "Backspace" || event.key === "Delete") {
+    event.preventDefault();
+    deleteSelectedCode(event.key === "Delete" ? "deleteContentForward" : "deleteContentBackward");
+    return;
+  }
+
+  if (event.key === "ArrowLeft") {
+    event.preventDefault();
+    activeCodeIndex = Math.max(0, activeCodeIndex - 1);
+    renderCodeCells();
+    return;
+  }
+
+  if (event.key === "ArrowRight") {
+    event.preventDefault();
+    activeCodeIndex = Math.min(correctCode.length, activeCodeIndex + 1);
+    renderCodeCells();
   }
 }
 
-function judgeAnswer() {
-  const answer = normalizeCode(codeInput.value).slice(0, correctCode.length);
-  const isPerfect = answer === correctCode;
+function handleCodePaste(event) {
+  event.preventDefault();
+  insertCodeCharacters(event.clipboardData.getData("text"));
+}
 
-  codeCells.forEach((cell, index) => {
-    const isCorrect = answer[index] === correctCode[index];
-    cell.classList.toggle("is-correct", isCorrect);
-    cell.classList.toggle("is-wrong", !isCorrect);
+function judgeAnswer() {
+  hasJudged = true;
+  const isPerfect = codeSlots.every((character, index) => character === correctCode[index]);
+
+  codeSlots.forEach((character, index) => {
+    codeStatuses[index] = character === correctCode[index] ? "correct" : "wrong";
   });
+  renderCodeCells();
 
   if (isPerfect) {
     showSuccessImage();
@@ -205,18 +263,90 @@ function closeClearModal() {
   clearModal.hidden = true;
 }
 
-function renderCodeCells() {
-  const answer = normalizeCode(codeInput.value).slice(0, correctCode.length);
-  const activeIndex = Math.min(codeInput.selectionStart || answer.length, correctCode.length - 1);
+function insertCodeCharacters(value) {
+  const characters = normalizeCode(value).slice(0, correctCode.length - activeCodeIndex).split("");
 
-  if (codeInput.value !== answer) {
-    codeInput.value = answer;
+  characters.forEach((character) => {
+    if (activeCodeIndex >= correctCode.length) {
+      return;
+    }
+
+    setCodeSlot(activeCodeIndex, character);
+    activeCodeIndex += 1;
+  });
+
+  activeCodeIndex = Math.min(activeCodeIndex, correctCode.length);
+  codeInput.value = "";
+  renderCodeCells();
+}
+
+function deleteSelectedCode(inputType) {
+  if (inputType === "deleteContentForward") {
+    if (activeCodeIndex < correctCode.length) {
+      setCodeSlot(activeCodeIndex, "");
+    }
+
+    renderCodeCells();
+    return;
   }
 
+  const targetIndex = activeCodeIndex === correctCode.length ? correctCode.length - 1 : activeCodeIndex;
+
+  if (codeSlots[targetIndex]) {
+    activeCodeIndex = targetIndex;
+    setCodeSlot(activeCodeIndex, "");
+  } else if (targetIndex > 0) {
+    activeCodeIndex = targetIndex - 1;
+    setCodeSlot(activeCodeIndex, "");
+  }
+
+  renderCodeCells();
+}
+
+function setCodeSlot(index, character) {
+  const nextCharacter = normalizeCode(character).slice(0, 1);
+
+  if (codeSlots[index] === nextCharacter) {
+    return;
+  }
+
+  codeSlots[index] = nextCharacter;
+
+  if (!hasJudged) {
+    codeStatuses[index] = "";
+    return;
+  }
+
+  codeStatuses[index] = nextCharacter === correctCode[index] ? "correct" : "";
+}
+
+function getCodeIndexFromPoint(x, y) {
+  let closestIndex = 0;
+  let closestDistance = Infinity;
+
   codeCells.forEach((cell, index) => {
-    cell.textContent = answer[index] || "";
-    cell.classList.remove("is-correct", "is-wrong");
-    cell.classList.toggle("is-active", document.activeElement === codeInput && index === activeIndex);
+    const rect = cell.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const distance = Math.hypot(centerX - x, centerY - y);
+
+    if (distance < closestDistance) {
+      closestDistance = distance;
+      closestIndex = index;
+    }
+  });
+
+  return closestIndex;
+}
+
+function renderCodeCells() {
+  const visibleActiveIndex = Math.min(activeCodeIndex, correctCode.length - 1);
+
+  codeCells.forEach((cell, index) => {
+    cell.textContent = codeSlots[index];
+    cell.classList.toggle("is-correct", codeStatuses[index] === "correct");
+    cell.classList.toggle("is-wrong", codeStatuses[index] === "wrong");
+    cell.classList.toggle("is-active", document.activeElement === codeInput && index === visibleActiveIndex);
   });
 }
 
