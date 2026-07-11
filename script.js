@@ -1,4 +1,4 @@
-const assetVersion = "20260711-1722";
+const assetVersion = "20260711-1730";
 
 const puzzleImages = [
   {
@@ -50,11 +50,9 @@ puzzleImages.forEach((item, index) => {
 });
 
 const codeCells = Array.from({ length: correctCode.length }, (_, index) => {
-  const cell = document.createElement("button");
+  const cell = document.createElement("span");
   cell.className = "code-cell";
-  cell.type = "button";
   cell.setAttribute("aria-label", `${index + 1}文字目`);
-  cell.addEventListener("click", () => focusCodeInput(index));
 
   codeGrid.append(cell);
   return cell;
@@ -66,7 +64,6 @@ codeInput.addEventListener("compositionend", handleCodeInput);
 codeInput.addEventListener("keydown", handleCodeKeydown);
 codeInput.addEventListener("focus", renderCodeCells);
 codeInput.addEventListener("blur", renderCodeCells);
-codeInput.addEventListener("selectionchange", renderCodeCells);
 codeInput.addEventListener("click", renderCodeCells);
 
 answerForm.addEventListener("submit", (event) => {
@@ -206,12 +203,6 @@ document.addEventListener("keydown", (event) => {
 
 function closeClearModal() {
   clearModal.hidden = true;
-}
-
-function focusCodeInput(index) {
-  codeInput.focus();
-  codeInput.setSelectionRange(index, index);
-  renderCodeCells();
 }
 
 function renderCodeCells() {
