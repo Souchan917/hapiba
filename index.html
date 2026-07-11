@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>nazokaijin</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="site-shell">
+      <section class="guide" aria-label="謎怪人からの案内">
+        <img
+          class="guide__image"
+          src="nazokaijin.webp"
+          alt="謎怪人からの案内文"
+        />
+      </section>
+
+      <section class="answer-section" aria-labelledby="answer-title">
+        <h1 class="answer-section__title" id="answer-title">ANSWER</h1>
+        <form class="answer-form" id="answerForm">
+          <div class="code-grid" id="codeGrid" aria-label="15桁の回答入力"></div>
+          <button class="judge-button" type="submit">判定</button>
+        </form>
+
+        <section class="result-panel" id="resultPanel" hidden>
+          <img
+            class="result-panel__image"
+            id="resultImage"
+            alt="謎怪人からの正解メッセージ"
+          />
+          <p class="result-panel__text" id="resultText">正解です。</p>
+        </section>
+      </section>
+
+      <section class="puzzle-list" aria-label="謎解き画像">
+        <div class="puzzle-grid" id="puzzleGrid"></div>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>
