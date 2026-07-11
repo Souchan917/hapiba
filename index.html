@@ -4,14 +4,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>nazokaijin</title>
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="style.css?v=20260711-1630" />
   </head>
   <body>
     <main class="site-shell">
       <section class="guide" aria-label="謎怪人からの案内">
         <img
           class="guide__image"
-          src="nazokaijin.webp"
+          src="nazokaijin.webp?v=20260711-1630"
           alt="謎怪人からの案内文"
         />
       </section>
@@ -23,14 +23,6 @@
           <button class="judge-button" type="submit">判定</button>
         </form>
 
-        <section class="result-panel" id="resultPanel" hidden>
-          <img
-            class="result-panel__image"
-            id="resultImage"
-            alt="謎怪人からの正解メッセージ"
-          />
-          <p class="result-panel__text" id="resultText">正解です。</p>
-        </section>
       </section>
 
       <section class="puzzle-list" aria-label="謎解き画像">
@@ -38,6 +30,31 @@
       </section>
     </main>
 
-    <script src="script.js"></script>
+    <div
+      class="clear-modal"
+      id="clearModal"
+      role="dialog"
+      aria-modal="true"
+      aria-label="正解"
+      hidden
+    >
+      <div class="clear-modal__backdrop" data-close-modal></div>
+      <div class="clear-modal__content">
+        <button class="clear-modal__close" type="button" id="clearModalClose" aria-label="閉じる">
+          ×
+        </button>
+        <img
+          class="clear-modal__image"
+          id="clearImage"
+          src="clear.webp?v=20260711-1630"
+          alt="正解メッセージ"
+        />
+        <p class="clear-modal__fallback" id="clearFallback" hidden>
+          正解です。
+        </p>
+      </div>
+    </div>
+
+    <script src="script.js?v=20260711-1630"></script>
   </body>
 </html>

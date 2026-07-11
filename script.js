@@ -1,3 +1,5 @@
+const assetVersion = "20260711-1630";
+
 const puzzleImages = [
   {
     src: "hapiba-01.webp",
@@ -15,17 +17,22 @@ const puzzleImages = [
     src: "hapiba-04.webp",
     caption: "画像 4",
   },
+  {
+    src: "hapiba-05.webp",
+    caption: "画像 5",
+  },
 ];
 
 const correctCode = "6N8Y5ABXAAMI2BR";
-const successImageSrc = "clear-kaijin.webp";
+const successImageSrc = "clear.webp";
 
 const puzzleGrid = document.getElementById("puzzleGrid");
 const answerForm = document.getElementById("answerForm");
 const codeGrid = document.getElementById("codeGrid");
-const resultPanel = document.getElementById("resultPanel");
-const resultImage = document.getElementById("resultImage");
-const resultText = document.getElementById("resultText");
+const clearModal = document.getElementById("clearModal");
+const clearModalClose = document.getElementById("clearModalClose");
+const clearImage = document.getElementById("clearImage");
+const clearFallback = document.getElementById("clearFallback");
 
 puzzleImages.forEach((item, index) => {
   const card = document.createElement("article");
@@ -64,7 +71,7 @@ answerForm.addEventListener("submit", (event) => {
 function createImage(src, alt) {
   const img = document.createElement("img");
   img.className = "puzzle-card__image";
-  img.src = src;
+  img.src = assetUrl(src);
   img.alt = alt;
   return img;
 }
@@ -80,7 +87,6 @@ function handleCodeInput(event, index) {
   const normalized = normalizeCode(event.target.value);
   event.target.value = normalized.slice(0, 1);
   event.target.classList.remove("is-correct", "is-wrong");
-  resultPanel.hidden = true;
 
   if (normalized.length > 1) {
     fillCode(normalized, index);
@@ -128,29 +134,49 @@ function judgeAnswer() {
     input.classList.toggle("is-wrong", !isCorrect);
   });
 
-  resultPanel.hidden = !isPerfect;
-
   if (isPerfect) {
     showSuccessImage();
   }
 }
 
 function showSuccessImage() {
-  resultText.textContent = "正解です。";
-  resultImage.hidden = true;
+  clearImage.hidden = true;
+  clearFallback.hidden = true;
+  clearModal.hidden = false;
 
   const image = new Image();
   image.onload = () => {
-    resultImage.src = successImageSrc;
-    resultImage.hidden = false;
-    resultText.textContent = "";
+    clearImage.src = assetUrl(successImageSrc);
+    clearImage.hidden = false;
   };
   image.onerror = () => {
-    resultText.textContent = "正解です。正解用の画像を追加するとここに表示されます。";
+    clearFallback.hidden = false;
   };
-  image.src = successImageSrc;
+  image.src = assetUrl(successImageSrc);
+}
+
+clearModalClose.addEventListener("click", closeClearModal);
+
+clearModal.addEventListener("click", (event) => {
+  if (event.target.hasAttribute("data-close-modal")) {
+    closeClearModal();
+  }
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !clearModal.hidden) {
+    closeClearModal();
+  }
+});
+
+function closeClearModal() {
+  clearModal.hidden = true;
 }
 
 function normalizeCode(value) {
   return value.normalize("NFKC").toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+
+function assetUrl(src) {
+  return `${src}?v=${assetVersion}`;
 }
