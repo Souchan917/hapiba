@@ -1,4 +1,4 @@
-const assetVersion = "20260711-1658";
+const assetVersion = "20260711-1705";
 
 const puzzleImages = [
   {
@@ -27,6 +27,8 @@ const correctCode = "6N8Y5ABXAAMI2BR";
 const successImageSrc = "clear.webp";
 
 const puzzleGrid = document.getElementById("puzzleGrid");
+const answerSection = document.getElementById("answerSection");
+const answerPlaceholder = document.getElementById("answerPlaceholder");
 const answerForm = document.getElementById("answerForm");
 const codeGrid = document.getElementById("codeGrid");
 const clearModal = document.getElementById("clearModal");
@@ -73,12 +75,53 @@ answerForm.addEventListener("submit", (event) => {
   judgeAnswer();
 });
 
+let answerSectionTop = 0;
+
+setAnswerSectionTop();
+updateAnswerPosition();
+
+window.addEventListener("scroll", updateAnswerPosition, { passive: true });
+window.addEventListener("resize", () => {
+  if (document.activeElement && document.activeElement.classList.contains("code-input")) {
+    return;
+  }
+
+  setAnswerSectionTop();
+  updateAnswerPosition();
+});
+window.addEventListener("load", () => {
+  setAnswerSectionTop();
+  updateAnswerPosition();
+});
+
 function createImage(src, alt) {
   const img = document.createElement("img");
   img.className = "puzzle-card__image";
   img.src = assetUrl(src);
   img.alt = alt;
   return img;
+}
+
+function setAnswerSectionTop() {
+  const wasFixed = answerSection.classList.contains("is-fixed");
+
+  if (wasFixed) {
+    answerSection.classList.remove("is-fixed");
+    answerPlaceholder.hidden = true;
+  }
+
+  answerSectionTop = answerSection.getBoundingClientRect().top + window.scrollY;
+  answerPlaceholder.style.height = `${answerSection.offsetHeight + 22}px`;
+
+  if (wasFixed) {
+    updateAnswerPosition();
+  }
+}
+
+function updateAnswerPosition() {
+  const shouldFix = window.scrollY >= answerSectionTop;
+  answerSection.classList.toggle("is-fixed", shouldFix);
+  answerPlaceholder.hidden = !shouldFix;
 }
 
 function createPlaceholder(number) {

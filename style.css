@@ -123,12 +123,27 @@ select {
 }
 
 .answer-section {
-  position: sticky;
-  top: 0;
   z-index: 4;
   margin: 0 -12px 22px;
   padding: 8px 12px 12px;
   background: linear-gradient(180deg, var(--bg) 86%, rgba(5, 5, 5, 0));
+}
+
+.answer-section.is-fixed {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  width: min(100%, 520px);
+  margin: 0;
+  transform: translateX(-50%);
+}
+
+.answer-placeholder {
+  display: block;
+}
+
+.answer-placeholder[hidden] {
+  display: none;
 }
 
 .answer-section__title {
@@ -311,5 +326,9 @@ select {
   .answer-section {
     margin-inline: -18px;
     padding-inline: 18px;
+  }
+
+  .answer-section.is-fixed {
+    margin-inline: 0;
   }
 }
