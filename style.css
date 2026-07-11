@@ -47,7 +47,6 @@ select {
   min-height: 100svh;
   margin: 0 auto;
   padding: 10px 12px 28px;
-  overflow: hidden;
 }
 
 .guide {
@@ -59,7 +58,6 @@ select {
 .guide__image {
   width: 100%;
   max-width: 100%;
-  max-height: 34svh;
   display: block;
   height: auto;
   object-fit: contain;

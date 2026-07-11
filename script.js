@@ -1,4 +1,4 @@
-const assetVersion = "20260711-1655";
+const assetVersion = "20260711-1658";
 
 const puzzleImages = [
   {
