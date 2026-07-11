@@ -1,4 +1,4 @@
-const assetVersion = "20260712-0038";
+const assetVersion = "20260712-0113";
 
 const puzzleImages = [
   {
@@ -76,8 +76,8 @@ codeInput.addEventListener("compositionend", handleCodeInput);
 codeInput.addEventListener("keydown", handleCodeKeydown);
 codeInput.addEventListener("paste", handleCodePaste);
 codeInput.addEventListener("focus", handleCodeFocus);
-codeInput.addEventListener("blur", renderCodeCells);
-codeEntry.addEventListener("click", () => codeInput.focus());
+codeInput.addEventListener("blur", handleCodeBlur);
+codeEntry.addEventListener("click", focusCodeInput);
 
 answerForm.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -87,21 +87,21 @@ answerForm.addEventListener("submit", (event) => {
 let answerSectionTop = 0;
 
 setAnswerSectionTop();
+updateFixedViewportOffset();
 updateAnswerPosition();
 
-window.addEventListener("scroll", updateAnswerPosition, { passive: true });
-window.addEventListener("resize", () => {
-  if (document.activeElement === codeInput) {
-    return;
-  }
-
-  setAnswerSectionTop();
-  updateAnswerPosition();
-});
+window.addEventListener("scroll", handleViewportScroll, { passive: true });
+window.addEventListener("resize", handleViewportResize);
 window.addEventListener("load", () => {
   setAnswerSectionTop();
+  updateFixedViewportOffset();
   updateAnswerPosition();
 });
+
+if (window.visualViewport) {
+  window.visualViewport.addEventListener("resize", handleVisualViewportChange);
+  window.visualViewport.addEventListener("scroll", handleVisualViewportChange);
+}
 
 function createImage(src, alt) {
   const img = document.createElement("img");
@@ -128,9 +128,39 @@ function setAnswerSectionTop() {
 }
 
 function updateAnswerPosition() {
-  const shouldFix = window.scrollY >= answerSectionTop;
+  const keepFixedForInput = isCodeInputActive() && answerSection.classList.contains("is-fixed");
+  const shouldFix = keepFixedForInput || window.scrollY >= answerSectionTop;
   answerSection.classList.toggle("is-fixed", shouldFix);
   answerPlaceholder.hidden = !shouldFix;
+}
+
+function handleViewportScroll() {
+  updateFixedViewportOffset();
+  updateAnswerPosition();
+}
+
+function handleViewportResize() {
+  updateFixedViewportOffset();
+
+  if (!isCodeInputActive()) {
+    setAnswerSectionTop();
+  }
+
+  updateAnswerPosition();
+}
+
+function handleVisualViewportChange() {
+  updateFixedViewportOffset();
+  updateAnswerPosition();
+}
+
+function updateFixedViewportOffset() {
+  const viewportTop = window.visualViewport ? window.visualViewport.offsetTop : 0;
+  answerSection.style.setProperty("--answer-fixed-top", `${Math.max(0, viewportTop)}px`);
+}
+
+function isCodeInputActive() {
+  return document.activeElement === codeInput;
 }
 
 function createPlaceholder(number) {
@@ -144,7 +174,7 @@ function handleCodePointerDown(event) {
   event.preventDefault();
   showWrongStatuses = false;
   activeCodeIndex = getEditableCodeIndex(getCodeIndexFromPoint(event.clientX, event.clientY));
-  codeInput.focus();
+  focusCodeInput();
   renderCodeCells();
 }
 
@@ -248,7 +278,23 @@ function handleCodePaste(event) {
 
 function handleCodeFocus() {
   showWrongStatuses = false;
+  updateFixedViewportOffset();
+  updateAnswerPosition();
   renderCodeCells();
+}
+
+function handleCodeBlur() {
+  updateFixedViewportOffset();
+  updateAnswerPosition();
+  renderCodeCells();
+}
+
+function focusCodeInput() {
+  try {
+    codeInput.focus({ preventScroll: true });
+  } catch (_) {
+    codeInput.focus();
+  }
 }
 
 function judgeAnswer() {

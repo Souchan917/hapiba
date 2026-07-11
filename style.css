@@ -128,11 +128,12 @@ select {
   margin: 0 -12px 22px;
   padding: 8px 12px 12px;
   background: linear-gradient(180deg, var(--bg) 86%, rgba(5, 5, 5, 0));
+  --answer-fixed-top: 0px;
 }
 
 .answer-section.is-fixed {
   position: fixed;
-  top: 0;
+  top: var(--answer-fixed-top);
   left: 50%;
   width: min(100%, 520px);
   margin: 0;
