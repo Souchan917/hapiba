@@ -1,4 +1,4 @@
-const assetVersion = "20260711-1630";
+const assetVersion = "20260711-1655";
 
 const puzzleImages = [
   {
@@ -52,10 +52,15 @@ const codeInputs = Array.from({ length: correctCode.length }, (_, index) => {
   input.type = "text";
   input.inputMode = "text";
   input.autocomplete = "off";
+  input.autocapitalize = "characters";
+  input.spellcheck = false;
   input.maxLength = 1;
+  input.pattern = "[A-Za-z0-9]";
   input.setAttribute("aria-label", `${index + 1}文字目`);
 
+  input.addEventListener("beforeinput", handleCodeBeforeInput);
   input.addEventListener("input", (event) => handleCodeInput(event, index));
+  input.addEventListener("compositionend", (event) => handleCodeInput(event, index));
   input.addEventListener("keydown", (event) => handleCodeKeydown(event, index));
   input.addEventListener("paste", (event) => handleCodePaste(event, index));
 
@@ -83,7 +88,21 @@ function createPlaceholder(number) {
   return placeholder;
 }
 
+function handleCodeBeforeInput(event) {
+  if (!event.data || event.inputType === "insertFromPaste" || event.isComposing) {
+    return;
+  }
+
+  if (!normalizeCode(event.data)) {
+    event.preventDefault();
+  }
+}
+
 function handleCodeInput(event, index) {
+  if (event.isComposing) {
+    return;
+  }
+
   const normalized = normalizeCode(event.target.value);
   event.target.value = normalized.slice(0, 1);
   event.target.classList.remove("is-correct", "is-wrong");
