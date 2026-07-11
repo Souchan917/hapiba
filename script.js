@@ -1,4 +1,4 @@
-const assetVersion = "20260711-1748";
+const assetVersion = "20260712-0038";
 
 const puzzleImages = [
   {
@@ -61,16 +61,21 @@ const codeCells = Array.from({ length: correctCode.length }, (_, index) => {
 
 const codeSlots = Array.from({ length: correctCode.length }, () => "");
 const codeStatuses = Array.from({ length: correctCode.length }, () => "");
+const lockedCodeSlots = Array.from({ length: correctCode.length }, () => false);
 let activeCodeIndex = 0;
 let hasJudged = false;
+let showWrongStatuses = false;
+let composingCode = "";
 
 codeInput.addEventListener("pointerdown", handleCodePointerDown);
 codeInput.addEventListener("beforeinput", handleCodeBeforeInput);
 codeInput.addEventListener("input", handleCodeInput);
+codeInput.addEventListener("compositionstart", handleCodeCompositionStart);
+codeInput.addEventListener("compositionupdate", handleCodeCompositionUpdate);
 codeInput.addEventListener("compositionend", handleCodeInput);
 codeInput.addEventListener("keydown", handleCodeKeydown);
 codeInput.addEventListener("paste", handleCodePaste);
-codeInput.addEventListener("focus", renderCodeCells);
+codeInput.addEventListener("focus", handleCodeFocus);
 codeInput.addEventListener("blur", renderCodeCells);
 codeEntry.addEventListener("click", () => codeInput.focus());
 
@@ -137,7 +142,8 @@ function createPlaceholder(number) {
 
 function handleCodePointerDown(event) {
   event.preventDefault();
-  activeCodeIndex = getCodeIndexFromPoint(event.clientX, event.clientY);
+  showWrongStatuses = false;
+  activeCodeIndex = getEditableCodeIndex(getCodeIndexFromPoint(event.clientX, event.clientY));
   codeInput.focus();
   renderCodeCells();
 }
@@ -149,6 +155,7 @@ function handleCodeBeforeInput(event) {
 
   if (event.inputType && event.inputType.startsWith("delete")) {
     event.preventDefault();
+    showWrongStatuses = false;
     deleteSelectedCode(event.inputType);
     return;
   }
@@ -170,20 +177,41 @@ function handleCodeBeforeInput(event) {
 
 function handleCodeInput(event) {
   if (event.isComposing) {
+    showWrongStatuses = false;
+    updateComposingCode(codeInput.value);
     return;
   }
 
-  const value = normalizeCode(codeInput.value);
+  const value = normalizeCode(codeInput.value || event.data || "");
+  showWrongStatuses = false;
+  composingCode = "";
 
   if (value) {
     insertCodeCharacters(value);
+    return;
   }
 
   codeInput.value = "";
   renderCodeCells();
 }
 
+function handleCodeCompositionStart() {
+  showWrongStatuses = false;
+  composingCode = "";
+  renderCodeCells();
+}
+
+function handleCodeCompositionUpdate(event) {
+  updateComposingCode(event.data || codeInput.value);
+}
+
 function handleCodeKeydown(event) {
+  if (event.isComposing) {
+    showWrongStatuses = false;
+    updateComposingCode(codeInput.value);
+    return;
+  }
+
   if (event.key === "Enter") {
     event.preventDefault();
     judgeAnswer();
@@ -198,29 +226,39 @@ function handleCodeKeydown(event) {
 
   if (event.key === "ArrowLeft") {
     event.preventDefault();
-    activeCodeIndex = Math.max(0, activeCodeIndex - 1);
+    const previousIndex = findPreviousEditableIndex(activeCodeIndex - 1);
+    activeCodeIndex = previousIndex === -1 ? activeCodeIndex : previousIndex;
     renderCodeCells();
     return;
   }
 
   if (event.key === "ArrowRight") {
     event.preventDefault();
-    activeCodeIndex = Math.min(correctCode.length, activeCodeIndex + 1);
+    const nextIndex = findNextEditableIndex(activeCodeIndex + 1);
+    activeCodeIndex = nextIndex === -1 ? correctCode.length : nextIndex;
     renderCodeCells();
   }
 }
 
 function handleCodePaste(event) {
   event.preventDefault();
+  showWrongStatuses = false;
   insertCodeCharacters(event.clipboardData.getData("text"));
+}
+
+function handleCodeFocus() {
+  showWrongStatuses = false;
+  renderCodeCells();
 }
 
 function judgeAnswer() {
   hasJudged = true;
+  showWrongStatuses = true;
   const isPerfect = codeSlots.every((character, index) => character === correctCode[index]);
 
   codeSlots.forEach((character, index) => {
     codeStatuses[index] = character === correctCode[index] ? "correct" : "wrong";
+    lockedCodeSlots[index] = character === correctCode[index];
   });
   renderCodeCells();
 
@@ -264,15 +302,22 @@ function closeClearModal() {
 }
 
 function insertCodeCharacters(value) {
-  const characters = normalizeCode(value).slice(0, correctCode.length - activeCodeIndex).split("");
+  const characters = normalizeCode(value).split("");
+  composingCode = "";
 
   characters.forEach((character) => {
-    if (activeCodeIndex >= correctCode.length) {
+    const targetIndex = findNextEditableIndex(activeCodeIndex);
+
+    if (targetIndex === -1) {
       return;
     }
 
-    setCodeSlot(activeCodeIndex, character);
-    activeCodeIndex += 1;
+    activeCodeIndex = targetIndex;
+
+    if (setCodeSlot(activeCodeIndex, character)) {
+      const nextIndex = findNextEditableIndex(activeCodeIndex + 1);
+      activeCodeIndex = nextIndex === -1 ? correctCode.length : nextIndex;
+    }
   });
 
   activeCodeIndex = Math.min(activeCodeIndex, correctCode.length);
@@ -281,9 +326,14 @@ function insertCodeCharacters(value) {
 }
 
 function deleteSelectedCode(inputType) {
+  composingCode = "";
+
   if (inputType === "deleteContentForward") {
-    if (activeCodeIndex < correctCode.length) {
-      setCodeSlot(activeCodeIndex, "");
+    const targetIndex = findNextEditableIndex(activeCodeIndex);
+
+    if (targetIndex !== -1) {
+      activeCodeIndex = targetIndex;
+      setCodeSlot(targetIndex, "");
     }
 
     renderCodeCells();
@@ -291,33 +341,90 @@ function deleteSelectedCode(inputType) {
   }
 
   const targetIndex = activeCodeIndex === correctCode.length ? correctCode.length - 1 : activeCodeIndex;
+  const editableTargetIndex = getEditableCodeIndex(targetIndex);
 
-  if (codeSlots[targetIndex]) {
-    activeCodeIndex = targetIndex;
+  if (editableTargetIndex !== -1 && codeSlots[editableTargetIndex]) {
+    activeCodeIndex = editableTargetIndex;
     setCodeSlot(activeCodeIndex, "");
-  } else if (targetIndex > 0) {
-    activeCodeIndex = targetIndex - 1;
-    setCodeSlot(activeCodeIndex, "");
+  } else {
+    const previousIndex = findPreviousEditableIndex(targetIndex - 1);
+
+    if (previousIndex !== -1) {
+      activeCodeIndex = previousIndex;
+      setCodeSlot(activeCodeIndex, "");
+    }
   }
 
   renderCodeCells();
 }
 
 function setCodeSlot(index, character) {
+  if (isLockedCodeIndex(index)) {
+    return false;
+  }
+
   const nextCharacter = normalizeCode(character).slice(0, 1);
 
   if (codeSlots[index] === nextCharacter) {
-    return;
+    return true;
   }
 
   codeSlots[index] = nextCharacter;
 
   if (!hasJudged) {
     codeStatuses[index] = "";
-    return;
+    return true;
   }
 
-  codeStatuses[index] = nextCharacter === correctCode[index] ? "correct" : "";
+  codeStatuses[index] = nextCharacter === correctCode[index] ? "correct" : "wrong";
+  lockedCodeSlots[index] = nextCharacter === correctCode[index];
+  return true;
+}
+
+function isLockedCodeIndex(index) {
+  return index >= 0 && index < correctCode.length && lockedCodeSlots[index];
+}
+
+function findNextEditableIndex(startIndex) {
+  for (let index = Math.max(0, startIndex); index < correctCode.length; index += 1) {
+    if (!isLockedCodeIndex(index)) {
+      return index;
+    }
+  }
+
+  return -1;
+}
+
+function findPreviousEditableIndex(startIndex) {
+  for (let index = Math.min(startIndex, correctCode.length - 1); index >= 0; index -= 1) {
+    if (!isLockedCodeIndex(index)) {
+      return index;
+    }
+  }
+
+  return -1;
+}
+
+function getEditableCodeIndex(index) {
+  if (index < 0) {
+    return -1;
+  }
+
+  if (index >= correctCode.length) {
+    return findPreviousEditableIndex(correctCode.length - 1);
+  }
+
+  if (!isLockedCodeIndex(index)) {
+    return index;
+  }
+
+  const nextIndex = findNextEditableIndex(index + 1);
+
+  if (nextIndex !== -1) {
+    return nextIndex;
+  }
+
+  return findPreviousEditableIndex(index - 1);
 }
 
 function getCodeIndexFromPoint(x, y) {
@@ -340,14 +447,59 @@ function getCodeIndexFromPoint(x, y) {
 }
 
 function renderCodeCells() {
-  const visibleActiveIndex = Math.min(activeCodeIndex, correctCode.length - 1);
+  const composingCharactersByIndex = getComposingCharactersByIndex();
+  const lastComposingIndex = getLastComposingIndex(composingCharactersByIndex);
+  const visibleActiveIndex = lastComposingIndex === -1
+    ? Math.min(activeCodeIndex, correctCode.length - 1)
+    : lastComposingIndex;
 
   codeCells.forEach((cell, index) => {
-    cell.textContent = codeSlots[index];
-    cell.classList.toggle("is-correct", codeStatuses[index] === "correct");
-    cell.classList.toggle("is-wrong", codeStatuses[index] === "wrong");
+    const isComposingCell = composingCharactersByIndex.has(index);
+    const visibleCharacter = isComposingCell ? composingCharactersByIndex.get(index) : codeSlots[index];
+    const isCorrectCell = hasJudged && visibleCharacter === correctCode[index];
+
+    cell.textContent = visibleCharacter;
+    cell.classList.toggle("is-composing", isComposingCell);
+    cell.classList.toggle("is-correct", isCorrectCell);
+    cell.classList.toggle(
+      "is-wrong",
+      showWrongStatuses && !isComposingCell && !isCorrectCell && codeStatuses[index] === "wrong",
+    );
     cell.classList.toggle("is-active", document.activeElement === codeInput && index === visibleActiveIndex);
   });
+}
+
+function updateComposingCode(value) {
+  composingCode = normalizeCode(value);
+  renderCodeCells();
+}
+
+function getComposingCharactersByIndex() {
+  const composingCharactersByIndex = new Map();
+  let searchIndex = activeCodeIndex;
+
+  composingCode.split("").forEach((character) => {
+    const targetIndex = findNextEditableIndex(searchIndex);
+
+    if (targetIndex === -1) {
+      return;
+    }
+
+    composingCharactersByIndex.set(targetIndex, character);
+    searchIndex = targetIndex + 1;
+  });
+
+  return composingCharactersByIndex;
+}
+
+function getLastComposingIndex(composingCharactersByIndex) {
+  let lastIndex = -1;
+
+  composingCharactersByIndex.forEach((_, index) => {
+    lastIndex = index;
+  });
+
+  return lastIndex;
 }
 
 function normalizeCode(value) {
