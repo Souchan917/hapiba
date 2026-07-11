@@ -9,6 +9,7 @@
   --pink-deep: #9c005b;
   --blue: #16a8ff;
   --red: #ff2f55;
+  --green: #39ff7a;
   --line: rgba(255, 20, 147, 0.42);
 }
 
@@ -207,11 +208,6 @@ select {
   border-bottom-color: var(--pink);
 }
 
-.code-cell.is-active {
-  border-bottom-color: var(--pink);
-  box-shadow: 0 4px 0 rgba(255, 20, 147, 0.18);
-}
-
 .code-cell.is-correct {
   border-bottom-color: var(--blue);
   box-shadow: 0 4px 0 rgba(22, 168, 255, 0.18);
@@ -220,6 +216,11 @@ select {
 .code-cell.is-wrong {
   border-bottom-color: var(--red);
   box-shadow: 0 4px 0 rgba(255, 47, 85, 0.18);
+}
+
+.code-cell.is-active {
+  border-bottom-color: var(--green);
+  box-shadow: 0 4px 0 rgba(57, 255, 122, 0.22);
 }
 
 .judge-button {
